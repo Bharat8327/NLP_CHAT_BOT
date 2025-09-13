@@ -1,7 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
+import io from 'socket.io-client';
 import CustomButton from './CustomButton';
 import { CustomCard } from './CustomCard';
 import FilePreview from './FilePreview';
+
+// connect socket
+const socket = io('http://localhost:3001'); // change to your backend URL
 
 const ChatInterface = ({ currentChatId, onChatChange }) => {
   const [messages, setMessages] = useState([
@@ -13,6 +17,12 @@ const ChatInterface = ({ currentChatId, onChatChange }) => {
     },
   ]);
   const [chatData, setChatData] = useState({});
+  const [inputValue, setInputValue] = useState('');
+  const [uploadedFiles, setUploadedFiles] = useState([]);
+  const [isTyping, setIsTyping] = useState(false);
+
+  const fileInputRef = useRef(null);
+  const textareaRef = useRef(null);
 
   // Load messages for current chat
   useEffect(() => {
@@ -32,10 +42,14 @@ const ChatInterface = ({ currentChatId, onChatChange }) => {
     }
   }, [currentChatId]);
 
-  const [inputValue, setInputValue] = useState('');
-  const [uploadedFiles, setUploadedFiles] = useState([]);
-  const fileInputRef = useRef(null);
-  const textareaRef = useRef(null);
+  // cleanup socket listeners
+  useEffect(() => {
+    return () => {
+      socket.off('chat_chunk');
+      socket.off('chat_done');
+      socket.off('chat_error');
+    };
+  }, []);
 
   const handleSend = () => {
     if (!inputValue.trim() && uploadedFiles.length === 0) return;
@@ -53,44 +67,87 @@ const ChatInterface = ({ currentChatId, onChatChange }) => {
     setChatData((prev) => ({ ...prev, [currentChatId]: updatedMessages }));
     onChatChange(currentChatId, updatedMessages);
 
-    // Auto-scroll to bottom after adding message
-    setTimeout(() => {
-      const chatContainer = document.getElementById('chat-container');
-      if (chatContainer) {
-        chatContainer.scrollTop = chatContainer.scrollHeight;
-      }
-    }, 100);
-
-    // Simulate bot response
-    setTimeout(() => {
-      const botMessage = {
-        id: (Date.now() + 1).toString(),
-        type: 'bot',
-        content:
-          "Thank you for your message. I've received it and I'm processing your request.",
-        timestamp: new Date().toLocaleTimeString(),
-      };
-      const finalMessages = [...updatedMessages, botMessage];
-      setMessages(finalMessages);
-      setChatData((prev) => ({ ...prev, [currentChatId]: finalMessages }));
-      onChatChange(currentChatId, finalMessages);
-
-      // Auto-scroll after bot response
-      setTimeout(() => {
-        const chatContainer = document.getElementById('chat-container');
-        if (chatContainer) {
-          chatContainer.scrollTop = chatContainer.scrollHeight;
-        }
-      }, 100);
-    }, 1000);
-
+    // reset input
     setInputValue('');
     setUploadedFiles([]);
+    if (textareaRef.current) textareaRef.current.style.height = '44px';
 
-    // Reset textarea height
-    if (textareaRef.current) {
-      textareaRef.current.style.height = '44px';
-    }
+    // scroll
+    setTimeout(() => {
+      const chatContainer = document.getElementById('chat-container');
+      if (chatContainer) chatContainer.scrollTop = chatContainer.scrollHeight;
+    }, 100);
+
+    // start bot typing
+    setIsTyping(true);
+
+    let cleanResponse = '';
+
+    const onChunk = (chunk) => {
+      cleanResponse += chunk;
+      setMessages((prev) => {
+        const withoutTempBot = prev.filter((m) => m.type !== 'bot-temp');
+        return [
+          ...withoutTempBot,
+          {
+            id: 'temp',
+            type: 'bot-temp',
+            content: cleanResponse,
+            timestamp: new Date().toLocaleTimeString(),
+          },
+        ];
+      });
+    };
+
+    const onDone = () => {
+      setIsTyping(false);
+      setMessages((prev) => {
+        const withoutTempBot = prev.filter((m) => m.type !== 'bot-temp');
+        return [
+          ...withoutTempBot,
+          {
+            id: Date.now().toString(),
+            type: 'bot',
+            content: cleanResponse,
+            timestamp: new Date().toLocaleTimeString(),
+          },
+        ];
+      });
+      socket.off('chat_chunk', onChunk);
+      socket.off('chat_done', onDone);
+      socket.off('chat_error', onError);
+    };
+
+    const onError = (errMsg) => {
+      setIsTyping(false);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now().toString(),
+          type: 'system',
+          content: errMsg || '❌ Failed to get response',
+          timestamp: new Date().toLocaleTimeString(),
+        },
+      ]);
+      socket.off('chat_chunk', onChunk);
+      socket.off('chat_done', onDone);
+      socket.off('chat_error', onError);
+    };
+
+    // attach listeners
+    socket.on('chat_chunk', onChunk);
+    socket.on('chat_done', onDone);
+    socket.on('chat_error', onError);
+
+    // send message + files to backend
+    socket.emit('send_message', {
+      text: userMessage.content,
+      files: uploadedFiles.map((file) => ({
+        name: file.name,
+        type: file.type,
+        size: file.size,
+      })),
+    });
   };
 
   const handleInputChange = (e) => {
@@ -121,10 +178,10 @@ const ChatInterface = ({ currentChatId, onChatChange }) => {
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-background">
+    <div className="flex flex-col h-screen max-h-screen bg-background">
       <div
         id="chat-container"
-        className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar"
+        className="flex-1 overflow-y-auto p-4 space-y-4 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
       >
         {messages.map((message) => (
           <div
@@ -134,10 +191,12 @@ const ChatInterface = ({ currentChatId, onChatChange }) => {
             }`}
           >
             <CustomCard
-              className={`max-w-[70%] p-4 animate-fade-in ${
+              className={`max-w-[80%] sm:max-w-[70%] p-4 bg-yellow-500 text-black animate-fade-in ${
                 message.type === 'user'
                   ? 'bg-primary text-primary-foreground border-primary/20'
-                  : 'bg-card border-border'
+                  : message.type === 'bot' || message.type === 'bot-temp'
+                  ? 'bg-card border-border'
+                  : 'text-red-500'
               }`}
             >
               <p className="text-sm whitespace-pre-wrap">{message.content}</p>
@@ -173,20 +232,24 @@ const ChatInterface = ({ currentChatId, onChatChange }) => {
                   ))}
                 </div>
               )}
-              <p className={`text-xs mt-2 opacity-70`}>{message.timestamp}</p>
+              <p className="text-xs mt-2 opacity-70 text-violet-900 ">
+                {message.timestamp}
+              </p>
             </CustomCard>
           </div>
         ))}
+        {isTyping && <p className="text-sm text-gray-500">Bot is typing...</p>}
       </div>
 
-      <div className="border-t border-border p-1 bg-card items-end">
+      {/* Input section */}
+      <div className="border-t border-border p-2 bg-card">
         {uploadedFiles.length > 0 && (
-          <div className="mb-4">
+          <div className="mb-2">
             <FilePreview files={uploadedFiles} onRemove={removeFile} />
           </div>
         )}
 
-        <div className="flex gap-1 items-start ">
+        <div className="flex gap-2 items-start">
           <input
             ref={fileInputRef}
             type="file"
@@ -225,7 +288,7 @@ const ChatInterface = ({ currentChatId, onChatChange }) => {
               onChange={handleInputChange}
               onKeyDown={handleKeyPress}
               placeholder="Type your message..."
-              className="w-full [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden py-3 bg-input  border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring auto-resize resize-none"
+              className="w-full [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden py-3 bg-input border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring auto-resize resize-none"
               rows={1}
             />
           </div>
