@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import io from 'socket.io-client';
 
 // connect socket
-const socket = io('http://localhost:3001'); // change to your backend URL
+const socket = io(`${import.meta.env.VITE_BACKEND_URL}`); // change to your backend URL
 
 const ChatBot = () => {
   const [messages, setMessages] = useState([]); // store chat messages

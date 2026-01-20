@@ -5,7 +5,7 @@ import { CustomCard } from './CustomCard';
 import FilePreview from './FilePreview';
 
 // connect socket
-const socket = io('http://localhost:3001'); // change to your backend URL
+const socket = io(`${import.meta.env.VITE_BACKEND_URL}`); // change to your backend URL
 
 const ChatInterface = ({ currentChatId, onChatChange }) => {
   const [messages, setMessages] = useState([
