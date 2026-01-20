@@ -33,7 +33,7 @@ app.use(express.json());
 app.use(morgan('common'));
 app.use(cookieParser());
 
-const origin = process.env.ORIGIN;
+const origin = process.env.CLIENT_URL;
 app.use(cors({ credentials: true, origin }));
 
 // Root endpoint for a basic health check
