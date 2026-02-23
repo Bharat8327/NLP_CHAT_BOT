@@ -1,4 +1,6 @@
 import express from 'express';
+import authRouter from './routers/authRouter.js';
+import chatHistoryRouter from './routers/chatHistoryRouter.js';
 import dotenv from 'dotenv';
 import dbConnect from './config/dbConnect.js';
 import morgan from 'morgan';
@@ -40,7 +42,8 @@ app.use(cors({ credentials: true, origin }));
 app.get('/', (req, res) => {
   res.status(200).send('Server is running! 🚀');
 });
-
+app.use('/api/auth', authRouter);
+app.use('/api/chat/history', chatHistoryRouter);
 // Endpoint to generate a LiveKit token
 app.get('/token', (req, res) => {
   try {
