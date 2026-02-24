@@ -9,13 +9,19 @@ const socket = io(import.meta.env.VITE_BACKEND_URL);
 
 // 🔊 SpeechControls Component
 function SpeechControls({ text }) {
-  const [utterance, setUtterance] = useState(null);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [lang, setLang] = useState('en-US');
 
   const startSpeaking = () => {
-    window.speechSynthesis.cancel(); // stop any ongoing speech
+    window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text);
-    setUtterance(u);
+    u.lang = lang;
+
+    // pick a matching voice if available
+    const voices = window.speechSynthesis.getVoices();
+    const match = voices.find((v) => v.lang === lang);
+    if (match) u.voice = match;
+
     window.speechSynthesis.speak(u);
     setIsSpeaking(true);
   };
@@ -36,11 +42,25 @@ function SpeechControls({ text }) {
   };
 
   return (
-    <div className="flex gap-2 mt-1 text-xs text-white">
-      <button onClick={startSpeaking}>▶️ Start</button>
-      <button onClick={pauseSpeaking}>⏸ Pause</button>
-      <button onClick={resumeSpeaking}>⏯ Resume</button>
-      <button onClick={stopSpeaking}>⏹ Stop</button>
+    <div className="flex flex-col gap-2 mt-1 text-xs text-white">
+      <div className="flex gap-2">
+        <button onClick={startSpeaking}>▶️ Start</button>
+        <button onClick={pauseSpeaking}>⏸ Pause</button>
+        <button onClick={resumeSpeaking}>⏯ Resume</button>
+        <button onClick={stopSpeaking}>⏹ Stop</button>
+      </div>
+      <select
+        value={lang}
+        onChange={(e) => setLang(e.target.value)}
+        className="text-black text-xs"
+      >
+        <option value="en-US">English (US)</option>
+        <option value="hi-IN">Hindi</option>
+        <option value="es-ES">Spanish</option>
+        <option value="fr-FR">French</option>
+        <option value="zh-CN">Chinese</option>
+        <option value="ar-SA">Arabic</option>
+      </select>
     </div>
   );
 }
@@ -52,6 +72,7 @@ export default function ChatInterface({ currentChatId, onChatChange }) {
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [isTyping, setIsTyping] = useState(false);
   const [lastBotMessage, setLastBotMessage] = useState('');
+  const [inputLang, setInputLang] = useState('en-US'); // 🌍 language for sending
 
   const fileInputRef = useRef(null);
   const textareaRef = useRef(null);
@@ -93,6 +114,7 @@ export default function ChatInterface({ currentChatId, onChatChange }) {
       content: inputValue,
       timestamp: new Date().toLocaleTimeString(),
       files: uploadedFiles.length ? uploadedFiles : undefined,
+      lang: inputLang, // 🌍 store language
     };
 
     const updated = [...messages, userMessage];
@@ -107,7 +129,6 @@ export default function ChatInterface({ currentChatId, onChatChange }) {
     setIsTyping(true);
     let cleanResponse = '';
 
-    // Streaming chunks
     const onChunk = (chunk) => {
       cleanResponse += chunk;
       setMessages((prev) => {
@@ -124,7 +145,6 @@ export default function ChatInterface({ currentChatId, onChatChange }) {
       });
     };
 
-    // Done
     const onDone = () => {
       setIsTyping(false);
       setLastBotMessage(cleanResponse);
@@ -166,6 +186,7 @@ export default function ChatInterface({ currentChatId, onChatChange }) {
 
     socket.emit('send_message', {
       text: inputValue,
+      lang: inputLang, // 🌍 send language to backend
       files: uploadedFiles.map((f) => ({
         name: f.name,
         type: f.type,
@@ -174,7 +195,6 @@ export default function ChatInterface({ currentChatId, onChatChange }) {
     });
   };
 
-  // Voice sends text here
   const sendVoiceText = (text) => {
     setInputValue(text);
     setTimeout(handleSend, 200);
@@ -222,7 +242,7 @@ export default function ChatInterface({ currentChatId, onChatChange }) {
               <p className="text-sm whitespace-pre-wrap">{m.content}</p>
               <p className="text-xs opacity-50">{m.timestamp}</p>
 
-              {/* 🔊 Add speech controls for bot messages */}
+              {/* 🔊 Speech controls for bot messages */}
               {m.type.includes('bot') && <SpeechControls text={m.content} />}
             </CustomCard>
           </div>
