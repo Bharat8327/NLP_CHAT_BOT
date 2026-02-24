@@ -7,6 +7,44 @@ import ChatWithVoice from './ChatVoices.jsx';
 
 const socket = io(import.meta.env.VITE_BACKEND_URL);
 
+// 🔊 SpeechControls Component
+function SpeechControls({ text }) {
+  const [utterance, setUtterance] = useState(null);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+
+  const startSpeaking = () => {
+    window.speechSynthesis.cancel(); // stop any ongoing speech
+    const u = new SpeechSynthesisUtterance(text);
+    setUtterance(u);
+    window.speechSynthesis.speak(u);
+    setIsSpeaking(true);
+  };
+
+  const pauseSpeaking = () => {
+    window.speechSynthesis.pause();
+    setIsSpeaking(false);
+  };
+
+  const resumeSpeaking = () => {
+    window.speechSynthesis.resume();
+    setIsSpeaking(true);
+  };
+
+  const stopSpeaking = () => {
+    window.speechSynthesis.cancel();
+    setIsSpeaking(false);
+  };
+
+  return (
+    <div className="flex gap-2 mt-1 text-xs text-white">
+      <button onClick={startSpeaking}>▶️ Start</button>
+      <button onClick={pauseSpeaking}>⏸ Pause</button>
+      <button onClick={resumeSpeaking}>⏯ Resume</button>
+      <button onClick={stopSpeaking}>⏹ Stop</button>
+    </div>
+  );
+}
+
 export default function ChatInterface({ currentChatId, onChatChange }) {
   const [messages, setMessages] = useState([]);
   const [chatData, setChatData] = useState({});
@@ -183,6 +221,9 @@ export default function ChatInterface({ currentChatId, onChatChange }) {
             >
               <p className="text-sm whitespace-pre-wrap">{m.content}</p>
               <p className="text-xs opacity-50">{m.timestamp}</p>
+
+              {/* 🔊 Add speech controls for bot messages */}
+              {m.type.includes('bot') && <SpeechControls text={m.content} />}
             </CustomCard>
           </div>
         ))}
