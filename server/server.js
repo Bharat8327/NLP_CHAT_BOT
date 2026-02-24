@@ -43,7 +43,7 @@ app.get('/', (req, res) => {
   res.status(200).send('Server is running! 🚀');
 });
 app.use('/api/auth', authRouter);
-app.use('/api/chat/history', chatHistoryRouter);
+app.use('/api/chat', chatHistoryRouter);
 // Endpoint to generate a LiveKit token
 app.get('/token', (req, res) => {
   try {
