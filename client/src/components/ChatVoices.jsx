@@ -64,7 +64,7 @@ export default function ChatWithVoice({ onSendText, lastBotMessage }) {
       <select
         value={lang}
         onChange={(e) => setLang(e.target.value)}
-        className="border rounded text-xs px-1"
+        className="border rounded text-xs px-1 text-white bg-gray-700"
       >
         {langList.map((l) => (
           <option key={l.code} value={l.code}>

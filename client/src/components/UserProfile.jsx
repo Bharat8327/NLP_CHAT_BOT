@@ -56,9 +56,9 @@ const UserProfile = () => {
                     </svg>
                   </div>
                   <div>
-                    <p className="font-medium text-foreground">User Name</p>
+                    <p className="font-medium text-foreground">Patel</p>
                     <p className="text-sm text-muted-foreground">
-                      user@example.com
+                      patel@gmail.com
                     </p>
                   </div>
                 </div>
@@ -87,7 +87,7 @@ const UserProfile = () => {
                     </svg>
                     Profile Settings
                   </CustomButton>
-                  <CustomButton
+                  {/* <CustomButton
                     onClick={() => {
                       setShowProfileModal(true);
                       setIsOpen(false);
@@ -115,7 +115,7 @@ const UserProfile = () => {
                       />
                     </svg>
                     Preferences
-                  </CustomButton>
+                  </CustomButton> */}
                   <hr className="my-2 border-border" />
                   <CustomButton
                     onClick={() => {

@@ -4,8 +4,8 @@ import CustomInput from './CustomInput';
 
 const ProfileModal = ({ isOpen, onClose, onSave }) => {
   const [profile, setProfile] = useState({
-    name: 'User Name',
-    email: 'user@example.com',
+    name: 'Patel',
+    email: 'patel@gmail.com',
     avatar: '',
     preferences: {
       chatbotType: 'friendly',

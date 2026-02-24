@@ -247,7 +247,7 @@ export default function ChatInterface({ currentChatId, onChatChange }) {
             </CustomCard>
           </div>
         ))}
-        {isTyping && <p className="text-xs text-gray-400">Bot typing...</p>}
+        {isTyping && <p className="text-xs text-gray-400">analyzing...</p>}
       </div>
 
       {/* Input Area */}
@@ -265,9 +265,9 @@ export default function ChatInterface({ currentChatId, onChatChange }) {
             onChange={handleFileUpload}
           />
 
-          <CustomButton onClick={() => fileInputRef.current.click()}>
+          {/* <CustomButton onClick={() => fileInputRef.current.click()}>
             📎
-          </CustomButton>
+          </CustomButton> */}
 
           <textarea
             ref={textareaRef}
