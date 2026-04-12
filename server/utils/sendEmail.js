@@ -17,7 +17,9 @@ export const sendEmail = async ({ to, subject, html }) => {
     }
 
     const transporter = nodemailer.createTransport({
-      service: process.env.SMTP_SERVICE || 'gmail',
+      host: process.env.SMTP_HOST || 'smtp.gmail.com',
+      port: process.env.SMTP_PORT || 587,
+      secure: false, // Forces connection over port 587 to bypass Render's port 465 blocks
       auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS,
