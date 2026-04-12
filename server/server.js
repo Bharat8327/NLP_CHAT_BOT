@@ -45,6 +45,9 @@ for (const key of requiredEnv) {
 // ────────────────────────────────────────────
 const app = express();
 
+// Trust Render's Load Balancer / Cloudflare proxy
+app.set('trust proxy', 1);
+
 // Security headers
 app.use(
   helmet({
