@@ -20,6 +20,8 @@ export const sendEmail = async ({ to, subject, html }) => {
       host: process.env.SMTP_HOST || 'smtp.gmail.com',
       port: process.env.SMTP_PORT || 587,
       secure: false, // Forces connection over port 587 to bypass Render's port 465 blocks
+      requireTLS: true,
+      family: 4, // Force IPv4 to bypass Render's broken IPv6 Dual-Stack (ENETUNREACH 2404)
       auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS,
