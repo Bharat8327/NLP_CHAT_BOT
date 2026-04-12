@@ -1,21 +1,45 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import CustomButton from './CustomButton';
 import CustomInput from './CustomInput';
+import useChatStore from '../store/chatStore';
 
 const ProfileModal = ({ isOpen, onClose, onSave }) => {
+  const voiceSettings = useChatStore((s) => s.voiceSettings);
+  const updateVoiceSettings = useChatStore((s) => s.updateVoiceSettings);
+  
   const [profile, setProfile] = useState({
     name: 'Patel',
     email: 'patel@gmail.com',
     avatar: '',
     preferences: {
       chatbotType: 'friendly',
-      language: 'english',
+      language: voiceSettings.language,
       notifications: true,
-      theme: 'light',
+      autoPlayTTS: voiceSettings.autoPlay,
     },
   });
 
+  // Sync state when opened
+  useEffect(() => {
+    if (isOpen) {
+      setProfile((p) => ({
+        ...p,
+        preferences: {
+          ...p.preferences,
+          language: voiceSettings.language,
+          autoPlayTTS: voiceSettings.autoPlay,
+        }
+      }));
+    }
+  }, [isOpen, voiceSettings.language, voiceSettings.autoPlay]);
+
   const handleSave = () => {
+    // Save to global Zustand store
+    updateVoiceSettings({
+      language: profile.preferences.language,
+      autoPlay: profile.preferences.autoPlayTTS,
+    });
+    
     onSave(profile);
     onClose();
   };
@@ -28,7 +52,7 @@ const ProfileModal = ({ isOpen, onClose, onSave }) => {
         className="absolute inset-0 bg-black/85 animate-fade-in"
         onClick={onClose}
       />
-      <div className="relative bg-card border border-border rounded-lg shadow-xl w-full max-w-md animate-scale-in">
+      <div className="relative bg-card border border-border rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto scrollbar-thin animate-scale-in">
         <div className="p-6">
           <h2 className="text-xl font-semibold mb-4 bg-gradient-to-r from-pink-500 to-blue-600 bg-clip-text text-transparent">
             Profile Settings
@@ -101,19 +125,19 @@ const ProfileModal = ({ isOpen, onClose, onSave }) => {
                     },
                   })
                 }
-                // bg-input border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-ring
-                className="w-full px-3 py-2 border rounded-md  focus:outline-none focus:ring-2 bg-black focus:ring-ring cursor-pointer "
+                className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 bg-black focus:ring-ring cursor-pointer text-foreground"
               >
-                <option value="english">English</option>
-                <option value="spanish">Spanish</option>
-                <option value="french">French</option>
-                <option value="german">German</option>
+                <option value="en-US">English</option>
+                <option value="hi-IN">Hindi</option>
+                <option value="es-ES">Spanish</option>
+                <option value="fr-FR">French</option>
+                <option value="de-DE">German</option>
               </select>
             </div>
 
             <div className="flex items-center justify-between">
               <label className="text-sm font-medium text-foreground">
-                Notifications
+                Auto-speak AI Responses
               </label>
               <button
                 onClick={() =>
@@ -121,19 +145,19 @@ const ProfileModal = ({ isOpen, onClose, onSave }) => {
                     ...profile,
                     preferences: {
                       ...profile.preferences,
-                      notifications: !profile.preferences.notifications,
+                      autoPlayTTS: !profile.preferences.autoPlayTTS,
                     },
                   })
                 }
                 className={`relative inline-flex h-5 w-14 items-center rounded-full transition-colors ${
-                  profile.preferences.notifications
+                  profile.preferences.autoPlayTTS
                     ? 'text-pink-400'
                     : 'bg-pink-400'
                 }`}
               >
                 <span
                   className={`inline-block h-4 w-5 transform rounded-full  transition-transform ${
-                    profile.preferences.notifications
+                    profile.preferences.autoPlayTTS
                       ? 'translate-x-5 bg-green-400'
                       : '-translate-x-5 bg-red-500'
                   }`}

@@ -4,16 +4,18 @@ import CustomButton from './CustomButton.jsx';
 import { CustomCard } from './CustomCard.jsx';
 import ProfileModal from './ProfileModal.jsx';
 import LogoutModal from './LogoutModal.jsx';
+import useAuthStore from '../store/useAuthStore.js';
 
 const UserProfile = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const navigate = useNavigate();
+  const { user, logout } = useAuthStore();
 
   const handleLogout = () => {
-    console.log('User logged out');
-    navigate('/login');
+    setShowLogoutModal(false);
+    logout(navigate);
   };
 
   const handleProfileSave = (profileData) => {
@@ -37,7 +39,7 @@ const UserProfile = () => {
               className="fixed inset-0 z-10   "
               onClick={() => setIsOpen(false)}
             />
-            <CustomCard className="absolute right-0 top-12 w-72 shadow-xl z-20 bg-card border-border animate-scale-in">
+            <CustomCard className="absolute right-0 top-12 w-64 md:w-72 shadow-2xl z-50 bg-card border-border animate-scale-in">
               <div className="p-4">
                 <div className="flex items-center space-x-3 mb-4 pb-3 border-b border-border">
                   <div className="w-12 h-12 bg-primary rounded-full flex items-center justify-center text-primary-foreground font-semibold">
@@ -56,14 +58,28 @@ const UserProfile = () => {
                     </svg>
                   </div>
                   <div>
-                    <p className="font-medium text-foreground">Patel</p>
+                    <p className="font-medium text-foreground">{user?.name || 'Loading...'}</p>
                     <p className="text-sm text-muted-foreground">
-                      patel@gmail.com
+                      {user?.email || ''}
                     </p>
                   </div>
                 </div>
 
                 <div className="space-y-1">
+                  <CustomButton
+                    onClick={() => {
+                      setIsOpen(false);
+                      navigate('/');
+                    }}
+                    variant="ghost"
+                    className="w-full justify-start text-foreground hover:bg-muted"
+                  >
+                    <svg className="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+                    </svg>
+                    Home
+                  </CustomButton>
+                  
                   <CustomButton
                     onClick={() => {
                       setShowProfileModal(true);

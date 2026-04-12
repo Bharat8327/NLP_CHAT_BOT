@@ -3,39 +3,20 @@ import CustomButton from './CustomButton';
 import { CustomCard } from './CustomCard';
 import { GoSidebarCollapse } from 'react-icons/go';
 import { TbLayoutSidebarLeftCollapse } from 'react-icons/tb';
+import useChatStore from '../store/chatStore';
 
 const ChatSidebar = ({
   collapsed,
   onToggle,
-  onChatSelect,
-  onNewChat,
-  currentChatId,
 }) => {
-  const [chatHistory, setChatHistory] = useState([
-    { id: '1', title: 'Welcome conversation', timestamp: '2024-01-15' },
-    { id: '2', title: 'Project discussion', timestamp: '2024-01-14' },
-    { id: '3', title: 'Technical help', timestamp: '2024-01-13' },
-    { id: '4', title: 'Code review session', timestamp: '2024-01-12' },
-    { id: '5', title: 'Bug fixing help', timestamp: '2024-01-11' },
-    { id: '6', title: 'API integration', timestamp: '2024-01-10' },
-    { id: '7', title: 'Database design', timestamp: '2024-01-09' },
-    { id: '8', title: 'Frontend optimization', timestamp: '2024-01-08' },
-    { id: '9', title: 'Security guidelines', timestamp: '2024-01-07' },
-    { id: '10', title: 'Performance tuning', timestamp: '2024-01-06' },
-  ]);
+  const { chats, deleteChat, createChat, activeChatId, setActiveChat } = useChatStore();
+  
+  // Convert chat store object to sorted array visually
+  const chatHistory = Object.values(chats).sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
 
-  const deleteChat = (id) => {
-    setChatHistory((prev) => prev.filter((chat) => chat.id !== id));
-  };
-
-  const createNewChat = () => {
-    const newChat = {
-      id: Date.now().toString(),
-      title: 'New conversation',
-      timestamp: new Date().toISOString().split('T')[0],
-    };
-    setChatHistory((prev) => [newChat, ...prev]);
-    onNewChat();
+  const handleCreateNewChat = () => {
+    // Zustand directly creates and maps it natively!
+    createChat();
   };
 
   return (
@@ -67,7 +48,7 @@ const ChatSidebar = ({
         <>
           <div className="p-4">
             <CustomButton
-              onClick={createNewChat}
+              onClick={handleCreateNewChat}
               className="w-full  
                 bg-gradient-to-r from-pink-500 to-blue-600 "
             >
@@ -96,9 +77,9 @@ const ChatSidebar = ({
             {chatHistory.map((chat) => (
               <CustomCard
                 key={chat.id}
-                onClick={() => onChatSelect(chat.id)}
+                onClick={() => setActiveChat(chat.id)}
                 className={`cursor-pointer p-3 hover:bg-muted/50 transition-colors group ${
-                  currentChatId === chat.id
+                  activeChatId === chat.id
                     ? 'bg-accent border-primary/20 shadow-sm'
                     : 'border-border'
                 }`}
@@ -146,7 +127,7 @@ const ChatSidebar = ({
       {collapsed && (
         <div className="p-2">
           <CustomButton
-            onClick={createNewChat}
+            onClick={handleCreateNewChat}
             variant="ghost"
             size="icon"
             className="w-12 h-12 hover:bg-muted"
