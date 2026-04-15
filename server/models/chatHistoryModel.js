@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 
 const ChatSessionSchema = new mongoose.Schema({
-  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', index: true },
   title: { type: String, required: true, maxlength: 200 },
   messages: [
     {
@@ -15,6 +15,9 @@ const ChatSessionSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
 });
+
+// Compound index for efficient user-scoped lookups
+ChatSessionSchema.index({ user: 1, updatedAt: -1 });
 
 // Auto-update updatedAt on save
 ChatSessionSchema.pre('save', function (next) {

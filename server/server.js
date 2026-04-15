@@ -31,8 +31,8 @@ dotenv.config();
 const PORT = process.env.PORT || 3001;
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
 
-// Validate critical env vars
-const requiredEnv = ['GEMINI_API_KEY', 'MODEL', 'MONGO_URI'];
+// Validate critical env vars (including JWT_SECRET)
+const requiredEnv = ['GEMINI_API_KEY', 'MODEL', 'MONGO_URI', 'JWT_SECRET'];
 for (const key of requiredEnv) {
   if (!process.env[key]) {
     logger.critical(`Missing required env variable: ${key}`);
@@ -48,11 +48,22 @@ const app = express();
 // Trust Render's Load Balancer / Cloudflare proxy
 app.set('trust proxy', 1);
 
-// Security headers
+// Security headers with CSP enabled
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: 'cross-origin' },
-    contentSecurityPolicy: false,
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'"],
+        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        fontSrc: ["'self'", "https://fonts.gstatic.com"],
+        imgSrc: ["'self'", "data:", "blob:"],
+        connectSrc: ["'self'", CLIENT_URL, "wss:", "ws:"],
+        frameSrc: ["'none'"],
+        objectSrc: ["'none'"],
+      },
+    },
   })
 );
 
@@ -93,12 +104,11 @@ app.get('/', (_req, res) => {
   });
 });
 
-// Health check (detailed)
+// Health check (safe — no sensitive server info)
 app.get('/health', (_req, res) => {
   res.status(200).json({
     status: 'healthy',
-    uptime: process.uptime(),
-    memory: process.memoryUsage(),
+    uptime: Math.round(process.uptime()),
     timestamp: new Date().toISOString(),
   });
 });

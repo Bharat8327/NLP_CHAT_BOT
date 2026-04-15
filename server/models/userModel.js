@@ -11,7 +11,8 @@ const UserSchema = new mongoose.Schema({
   isVerified: { type: Boolean, default: false },
   authOtp: { type: String },
   authOtpExpire: { type: Date },
-  refreshToken: { type: String }, // Store current refresh token
+  refreshToken: { type: String }, // Store hashed refresh token
+  refreshTokenId: { type: String, index: true }, // Unhashed ID for O(1) lookup during refresh
   resetPasswordToken: { type: String },
   resetPasswordExpire: { type: Date },
 });
