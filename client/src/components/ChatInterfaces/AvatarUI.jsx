@@ -165,13 +165,16 @@ export default function AvatarUI() {
   });
 
   const voiceOutput = useVoiceOutput();
+  const lastSpokenId = useRef(lastBotMessage?.id);
 
   // Auto speak
   useEffect(() => {
-    if (lastBotMessage) {
-      voiceOutput.speak(lastBotMessage);
+    if (lastBotMessage && lastBotMessage.id !== lastSpokenId.current) {
+      lastSpokenId.current = lastBotMessage.id;
+      const textToSpeak = typeof lastBotMessage === 'string' ? lastBotMessage : lastBotMessage.text;
+      if (textToSpeak) voiceOutput.speak(textToSpeak);
     }
-  }, [lastBotMessage]);
+  }, [lastBotMessage, voiceOutput]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });

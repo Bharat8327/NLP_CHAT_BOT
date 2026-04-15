@@ -1,37 +1,54 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import io from 'socket.io-client';
-
-// connect socket
-const socket = io(`${import.meta.env.VITE_BACKEND_URL}`); // change to your backend URL
 
 const ChatBot = () => {
   const [messages, setMessages] = useState([]); // store chat messages
   const [input, setInput] = useState(''); // user input
   const [isTyping, setIsTyping] = useState(false);
+  const socketRef = useRef(null);
+  const activeListenersRef = useRef(null);
 
   useEffect(() => {
-    // cleanup listeners when component unmounts
+    // Create socket inside component lifecycle
+    socketRef.current = io(import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001');
+    
     return () => {
-      socket.off('chat_chunk');
-      socket.off('chat_done');
-      socket.off('chat_error');
+      // Clean up listeners and disconnect on unmount
+      if (activeListenersRef.current && socketRef.current) {
+        socketRef.current.off('chat_chunk', activeListenersRef.current.onChunk);
+        socketRef.current.off('chat_done', activeListenersRef.current.onDone);
+        socketRef.current.off('chat_error', activeListenersRef.current.onError);
+      }
+      socketRef.current?.disconnect();
+      socketRef.current = null;
     };
   }, []);
 
   const sendMessage = () => {
     if (!input.trim()) return;
+    const socket = socketRef.current;
+    if (!socket) return;
+
+    // Clean up previous listeners
+    if (activeListenersRef.current) {
+      socket.off('chat_chunk', activeListenersRef.current.onChunk);
+      socket.off('chat_done', activeListenersRef.current.onDone);
+      socket.off('chat_error', activeListenersRef.current.onError);
+      activeListenersRef.current = null;
+    }
 
     const userMessage = { role: 'user', text: input };
     setMessages((prev) => [...prev, userMessage]); // add user msg to UI
 
     // reset
+    const sentText = input;
     setInput('');
     setIsTyping(true);
 
     let cleanResponse = '';
 
     const onChunk = (chunk) => {
-      const filteredChunk = chunk.replace(/\\/g, '').trim();
+      const filteredChunk = chunk.replace(/\\\\/g, '').trim();
       cleanResponse += filteredChunk;
 
       // live update bot response while streaming
@@ -47,10 +64,7 @@ const ChatBot = () => {
         const withoutTempBot = prev.filter((m) => m.role !== 'bot-temp');
         return [...withoutTempBot, { role: 'bot', text: cleanResponse }];
       });
-
-      socket.off('chat_chunk', onChunk);
-      socket.off('chat_done', onDone);
-      socket.off('chat_error', onError);
+      cleanup();
     };
 
     const onError = (errMsg) => {
@@ -59,11 +73,18 @@ const ChatBot = () => {
         ...prev,
         { role: 'system', text: errMsg || '❌ Failed to get response' },
       ]);
+      cleanup();
+    };
 
+    const cleanup = () => {
       socket.off('chat_chunk', onChunk);
       socket.off('chat_done', onDone);
       socket.off('chat_error', onError);
+      activeListenersRef.current = null;
     };
+
+    // Store references for cleanup
+    activeListenersRef.current = { onChunk, onDone, onError };
 
     // attach listeners
     socket.on('chat_chunk', onChunk);
@@ -71,7 +92,7 @@ const ChatBot = () => {
     socket.on('chat_error', onError);
 
     // send to backend
-    socket.emit('send_message', { text: input });
+    socket.emit('send_message', { text: sentText });
   };
 
   return (

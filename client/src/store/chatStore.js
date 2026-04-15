@@ -10,10 +10,18 @@ const DEFAULT_WELCOME = {
 
 const EMPTY_MESSAGES = [];
 
+// Sync debounce timer reference
+let syncDebounceTimer = null;
+const SYNC_DEBOUNCE_MS = 1500; // Wait 1.5s after last message before syncing
+const MAX_SYNC_RETRIES = 3;
+
 const useChatStore = create((set, get) => ({
       // ── UI Mode ────────────────────────────────────────
       uiMode: 'classic', // classic | voice | dashboard | avatar
       setUIMode: (mode) => set({ uiMode: mode }),
+
+      // ── Sync lock ──────────────────────────────────────
+      _isSyncing: false,
 
       // ── Chats ──────────────────────────────────────────
       chats: {
@@ -61,7 +69,8 @@ const useChatStore = create((set, get) => ({
           
           // Fire and forget Async Deletion to Cloud! (Optimistic UI update)
           if (cloudId) {
-            api.delete(`/api/chat/${cloudId}`).catch(err => console.warn('Failed cloud chat deletion', err));
+            const deleteConfig = { _isBackgroundSync: true };
+            api.delete(`/api/chat/${cloudId}`, deleteConfig).catch(err => console.warn('Failed cloud chat deletion', err));
           }
 
           return {
@@ -121,8 +130,9 @@ const useChatStore = create((set, get) => ({
             timestamp: new Date().toLocaleTimeString(),
           });
           
-          // Magically trigger network sync quietly after state executes
-          setTimeout(() => get().syncCurrentChat(), 500);
+          // Debounced sync — waits for rapid messages to settle before syncing
+          if (syncDebounceTimer) clearTimeout(syncDebounceTimer);
+          syncDebounceTimer = setTimeout(() => get().syncCurrentChat(), SYNC_DEBOUNCE_MS);
 
           return {
             chats: { ...s.chats, [chatId]: { ...chat, messages: msgs } },
@@ -179,7 +189,7 @@ const useChatStore = create((set, get) => ({
       // ── Cloud Database Synchronization Orchestration ───
       fetchCloudChats: async () => {
         try {
-          const { data } = await api.get('/api/chat');
+          const { data } = await api.get('/api/chat', { _isBackgroundSync: true });
           if (data.sessions && data.sessions.length > 0) {
             set((s) => {
               const newChats = { ...s.chats };
@@ -203,14 +213,20 @@ const useChatStore = create((set, get) => ({
             });
           }
         } catch (err) {
-          console.warn('Failed to fetch cloud chats', err);
+          console.warn('Failed to fetch cloud chats', err.message || err);
         }
       },
 
-      syncCurrentChat: async () => {
+      syncCurrentChat: async (retryCount = 0) => {
         const s = get();
+        
+        // Prevent concurrent syncs
+        if (s._isSyncing) return;
+        
         const chat = s.chats[s.activeChatId];
         if (!chat || chat.messages.length <= 1) return; // Don't upload empty default welcomes
+
+        set({ _isSyncing: true });
 
         try {
           const payload = {
@@ -220,18 +236,33 @@ const useChatStore = create((set, get) => ({
             chatId: chat.cloudId // Only provided if it already exists remotely!
           };
 
-          const { data } = await api.post('/api/chat', payload);
+          // Mark as background sync so axios interceptor won't force logout on 401
+          const config = { _isBackgroundSync: true };
+          const { data } = await api.post('/api/chat', payload, config);
+          
           // If this was a virgin chat, map the returned Mongo ID to our local object!
           if (!chat.cloudId && data.id) {
             set(state => ({
               chats: {
                 ...state.chats,
-                [s.activeChatId]: { ...chat, cloudId: data.id }
+                [s.activeChatId]: { ...state.chats[s.activeChatId], cloudId: data.id }
               }
             }));
           }
         } catch (err) {
-          console.warn('Silent Background Sync Failed', err);
+          console.warn(`Chat sync failed (attempt ${retryCount + 1})`, err.message || err);
+          
+          // Retry with exponential backoff (max 3 retries)
+          if (retryCount < MAX_SYNC_RETRIES) {
+            const delay = Math.pow(2, retryCount) * 1000; // 1s, 2s, 4s
+            setTimeout(() => {
+              set({ _isSyncing: false }); // Unlock before retry
+              get().syncCurrentChat(retryCount + 1);
+            }, delay);
+            return; // Don't unlock yet — the retry will handle it
+          }
+        } finally {
+          set({ _isSyncing: false });
         }
       }
     })

@@ -19,16 +19,14 @@ import AuthRoute from './components/AuthRoute.jsx';
 const AvatarUI = lazy(() => import('./components/ChatInterfaces/AvatarUI.jsx'));
 
 const App = () => {
-  const { checkAuth } = useAuthStore();
-  const { fetchCloudChats } = useChatStore();
-
+  // Run auth check once on mount — no dependencies to prevent re-runs
   useEffect(() => {
-    checkAuth().then((isAuth) => {
+    useAuthStore.getState().checkAuth().then((isAuth) => {
       if (isAuth) {
-        fetchCloudChats();
+        useChatStore.getState().fetchCloudChats();
       }
     });
-  }, [checkAuth, fetchCloudChats]);
+  }, []); // Empty deps — runs once. Using getState() avoids stale closure issues.
 
   return (
     <>
@@ -47,14 +45,6 @@ const App = () => {
       />
       <div className="min-h-screen bg-[#0a0a0f] text-white">
         <Routes>
-          <Route path="*" element={
-            <div className="h-full flex items-center justify-center">
-              <div className="text-center animate-fadeIn">
-                <h1 className="text-6xl font-bold gradient-text mb-4">404</h1>
-                <p className="text-white/40 text-lg">Page not found</p>
-              </div>
-            </div>
-          } />
           <Route path="/" element={<LandingPage />} />
           <Route path="/about" element={<AboutPage />} />
           {/* Public / Unauthenticated Only Routes */}
@@ -65,11 +55,21 @@ const App = () => {
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password/:token" element={<ResetPassword />} />
           </Route>
-          
+
           {/* Protected Routes */}
           <Route element={<ProtectedRoute />}>
             <Route path="/chat" element={<HomePage />} />
           </Route>
+
+          {/* 404 catch-all — must be LAST */}
+          <Route path="*" element={
+            <div className="h-full flex items-center justify-center">
+              <div className="text-center animate-fadeIn">
+                <h1 className="text-6xl font-bold gradient-text mb-4">404</h1>
+                <p className="text-white/40 text-lg">Page not found</p>
+              </div>
+            </div>
+          } />
         </Routes>
       </div>
     </>

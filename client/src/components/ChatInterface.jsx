@@ -5,8 +5,6 @@ import { CustomCard } from './CustomCard.jsx';
 import FilePreview from './FilePreview.jsx';
 import ChatWithVoice from './ChatVoices.jsx';
 
-const socket = io(import.meta.env.VITE_BACKEND_URL);
-
 // 🔊 SpeechControls Component
 function SpeechControls({ text }) {
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -22,6 +20,7 @@ function SpeechControls({ text }) {
     const match = voices.find((v) => v.lang === lang);
     if (match) u.voice = match;
 
+    u.onend = () => setIsSpeaking(false);
     window.speechSynthesis.speak(u);
     setIsSpeaking(true);
   };
@@ -76,6 +75,24 @@ export default function ChatInterface({ currentChatId, onChatChange }) {
 
   const fileInputRef = useRef(null);
   const textareaRef = useRef(null);
+  const socketRef = useRef(null);
+  const activeListenersRef = useRef(null);
+
+  // Initialize socket inside component lifecycle
+  useEffect(() => {
+    socketRef.current = io(import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001');
+    
+    return () => {
+      // Clean up listeners and disconnect on unmount
+      if (activeListenersRef.current && socketRef.current) {
+        socketRef.current.off('chat_chunk', activeListenersRef.current.onChunk);
+        socketRef.current.off('chat_done', activeListenersRef.current.onDone);
+        socketRef.current.off('chat_error', activeListenersRef.current.onError);
+      }
+      socketRef.current?.disconnect();
+      socketRef.current = null;
+    };
+  }, []);
 
   // Load chat messages
   useEffect(() => {
@@ -95,23 +112,26 @@ export default function ChatInterface({ currentChatId, onChatChange }) {
     }
   }, [currentChatId]);
 
-  // Cleanup socket
-  useEffect(() => {
-    return () => {
-      socket.off('chat_chunk');
-      socket.off('chat_done');
-      socket.off('chat_error');
-    };
-  }, []);
-
   // Send Message
-  const handleSend = () => {
-    if (!inputValue.trim() && uploadedFiles.length === 0) return;
+  const handleSend = (overrideText) => {
+    const textToSend = overrideText || inputValue;
+    if (!textToSend.trim() && uploadedFiles.length === 0) return;
+
+    const socket = socketRef.current;
+    if (!socket) return;
+
+    // Clean up any previous active listeners
+    if (activeListenersRef.current) {
+      socket.off('chat_chunk', activeListenersRef.current.onChunk);
+      socket.off('chat_done', activeListenersRef.current.onDone);
+      socket.off('chat_error', activeListenersRef.current.onError);
+      activeListenersRef.current = null;
+    }
 
     const userMessage = {
       id: Date.now().toString(),
       type: 'user',
-      content: inputValue,
+      content: textToSend,
       timestamp: new Date().toLocaleTimeString(),
       files: uploadedFiles.length ? uploadedFiles : undefined,
       lang: inputLang, // 🌍 store language
@@ -124,7 +144,7 @@ export default function ChatInterface({ currentChatId, onChatChange }) {
 
     setInputValue('');
     setUploadedFiles([]);
-    textareaRef.current.style.height = '44px';
+    if (textareaRef.current) textareaRef.current.style.height = '44px';
 
     setIsTyping(true);
     let cleanResponse = '';
@@ -162,9 +182,7 @@ export default function ChatInterface({ currentChatId, onChatChange }) {
         ];
       });
 
-      socket.off('chat_chunk', onChunk);
-      socket.off('chat_done', onDone);
-      socket.off('chat_error', onError);
+      cleanup();
     };
 
     const onError = (err) => {
@@ -178,14 +196,25 @@ export default function ChatInterface({ currentChatId, onChatChange }) {
           timestamp: new Date().toLocaleTimeString(),
         },
       ]);
+      cleanup();
     };
+
+    const cleanup = () => {
+      socket.off('chat_chunk', onChunk);
+      socket.off('chat_done', onDone);
+      socket.off('chat_error', onError);
+      activeListenersRef.current = null;
+    };
+
+    // Store references for cleanup
+    activeListenersRef.current = { onChunk, onDone, onError };
 
     socket.on('chat_chunk', onChunk);
     socket.on('chat_done', onDone);
     socket.on('chat_error', onError);
 
     socket.emit('send_message', {
-      text: inputValue,
+      text: textToSend,
       lang: inputLang, // 🌍 send language to backend
       files: uploadedFiles.map((f) => ({
         name: f.name,
@@ -195,16 +224,18 @@ export default function ChatInterface({ currentChatId, onChatChange }) {
     });
   };
 
+  // Fixed: directly pass text to handleSend instead of using setTimeout race condition
   const sendVoiceText = (text) => {
-    setInputValue(text);
-    setTimeout(handleSend, 200);
+    handleSend(text);
   };
 
   const handleInputChange = (e) => {
     setInputValue(e.target.value);
-    textareaRef.current.style.height = '44px';
-    textareaRef.current.style.height =
-      Math.min(textareaRef.current.scrollHeight, 200) + 'px';
+    if (textareaRef.current) {
+      textareaRef.current.style.height = '44px';
+      textareaRef.current.style.height =
+        Math.min(textareaRef.current.scrollHeight, 200) + 'px';
+    }
   };
 
   const handleFileUpload = (e) => {
@@ -265,10 +296,6 @@ export default function ChatInterface({ currentChatId, onChatChange }) {
             onChange={handleFileUpload}
           />
 
-          {/* <CustomButton onClick={() => fileInputRef.current.click()}>
-            📎
-          </CustomButton> */}
-
           <textarea
             ref={textareaRef}
             value={inputValue}
@@ -279,7 +306,7 @@ export default function ChatInterface({ currentChatId, onChatChange }) {
             rows={1}
           />
 
-          <CustomButton onClick={handleSend}>➤</CustomButton>
+          <CustomButton onClick={() => handleSend()}>➤</CustomButton>
 
           {/* 🎤 Voice Component */}
           <ChatWithVoice

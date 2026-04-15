@@ -7,6 +7,10 @@ const useAuthStore = create((set) => ({
   isAuthenticated: false,
   isLoading: true,
 
+  // Direct setters — used by axios interceptor after token refresh
+  setUser: (user) => set({ user, isAuthenticated: !!user }),
+  setAuthenticated: (isAuthenticated) => set({ isAuthenticated }),
+
   checkAuth: async () => {
     const token = localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken');
     if (!token) {

@@ -11,6 +11,7 @@ export default function ChatWithVoice({ onSendText, lastBotMessage }) {
 
   const recognitionRef = useRef(null);
   const synthRef = useRef(window.speechSynthesis);
+  const lastSpokenRef = useRef(''); // Track last spoken message to avoid duplicates
 
   // 🎙️ Speech to Text
   const startListening = () => {
@@ -32,12 +33,22 @@ export default function ChatWithVoice({ onSendText, lastBotMessage }) {
 
     rec.onresult = (e) => {
       const text = e.results[0][0].transcript;
-      onSendText(text);
+      // Send voice text directly — no setTimeout race condition
+      if (text.trim()) {
+        onSendText(text);
+      }
       setRecognizing(false);
     };
 
-    rec.onerror = () => setRecognizing(false);
-    rec.onend = () => setRecognizing(false);
+    rec.onerror = () => {
+      setRecognizing(false);
+      recognitionRef.current = null;
+    };
+    
+    rec.onend = () => {
+      setRecognizing(false);
+      recognitionRef.current = null;
+    };
 
     recognitionRef.current = rec;
     rec.start();
@@ -46,9 +57,18 @@ export default function ChatWithVoice({ onSendText, lastBotMessage }) {
 
   // 🔊 Speak AI Response
   useEffect(() => {
-    if (!lastBotMessage) return;
+    if (!lastBotMessage || lastBotMessage === lastSpokenRef.current) return;
+    lastSpokenRef.current = lastBotMessage;
     speak(lastBotMessage);
   }, [lastBotMessage]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      recognitionRef.current?.abort();
+      synthRef.current?.cancel();
+    };
+  }, []);
 
   const speak = (text) => {
     if (!window.speechSynthesis) return;
