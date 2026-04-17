@@ -67,7 +67,7 @@ api.interceptors.response.use(
     if (isRefreshing) {
       return new Promise((resolve, reject) => {
         failedQueue.push({ resolve, reject });
-      }).then((newToken) => {
+      }).then(async (newToken) => {
         originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
         // Re-read the fresh CSRF token from store
         try {
