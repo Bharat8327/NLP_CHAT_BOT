@@ -26,7 +26,7 @@ const processQueue = (error, token = null) => {
 
 
 // ── Request Interceptor ─────────────────────────────────
-api.interceptors.request.use((config) => {
+api.interceptors.request.use(async (config) => {
   const token = localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken');
   if (token) {
     config.headers['Authorization'] = `Bearer ${token}`;
