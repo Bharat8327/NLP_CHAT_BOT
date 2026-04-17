@@ -67,9 +67,8 @@ const useChatStore = create((set, get) => ({
           
           const remaining = Object.keys(copy);
           
-          // Fire and forget Async Deletion to Cloud! (Optimistic UI update)
           if (cloudId) {
-            const deleteConfig = { _isBackgroundSync: true };
+            const deleteConfig = { headers: { 'X-Background-Sync': 'true' } };
             api.delete(`/api/chat/${cloudId}`, deleteConfig).catch(err => console.warn('Failed cloud chat deletion', err));
           }
 
@@ -189,7 +188,7 @@ const useChatStore = create((set, get) => ({
       // ── Cloud Database Synchronization Orchestration ───
       fetchCloudChats: async () => {
         try {
-          const { data } = await api.get('/api/chat', { _isBackgroundSync: true });
+          const { data } = await api.get('/api/chat', { headers: { 'X-Background-Sync': 'true' } });
           if (data.sessions && data.sessions.length > 0) {
             set((s) => {
               const newChats = { ...s.chats };
@@ -237,7 +236,7 @@ const useChatStore = create((set, get) => ({
           };
 
           // Mark as background sync so axios interceptor won't force logout on 401
-          const config = { _isBackgroundSync: true };
+          const config = { headers: { 'X-Background-Sync': 'true' } };
           const { data } = await api.post('/api/chat', payload, config);
           
           // If this was a virgin chat, map the returned Mongo ID to our local object!

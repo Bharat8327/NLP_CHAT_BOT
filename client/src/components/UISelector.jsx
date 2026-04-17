@@ -50,13 +50,13 @@ export default function UISelector({ className = '' }) {
   const setUIMode = useChatStore((s) => s.setUIMode);
 
   return (
-    <div className={`flex items-center gap-1 p-1 rounded-xl bg-white/5 backdrop-blur-md border border-white/10 ${className}`}>
+    <div className={`flex items-center gap-0.5 sm:gap-1 p-1 rounded-xl bg-white/5 backdrop-blur-md border border-white/10 ${className}`}>
       {UI_MODES.map((mode) => (
         <button
           key={mode.id}
           onClick={() => setUIMode(mode.id)}
           className={`
-            flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium
+            flex items-center gap-1.5 p-2 sm:px-3 sm:py-1.5 rounded-lg text-xs font-medium
             transition-all duration-300 ease-out
             ${
               uiMode === mode.id

@@ -128,7 +128,7 @@ api.interceptors.response.use(
       processQueue(refreshErr, null);
       
       // Check if this was a background sync request — don't force logout for those
-      if (originalRequest._isBackgroundSync) {
+      if (originalRequest.headers && originalRequest.headers['X-Background-Sync'] === 'true') {
         console.warn('Background sync failed — will retry later');
         return Promise.reject(refreshErr);
       }

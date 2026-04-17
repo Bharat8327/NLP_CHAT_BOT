@@ -115,7 +115,7 @@ export default function ClassicChatUI() {
   ];
 
   return (
-    <div className="flex h-full w-full overflow-hidden">
+    <div className="flex h-full w-full overflow-hidden relative">
       {/* ── Sidebar ──────────────────────────────────── */}
       <aside
         className={`${
@@ -229,7 +229,7 @@ export default function ClassicChatUI() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
-            <h2 className="text-sm font-semibold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent hidden sm:block">
+            <h2 className="text-sm font-semibold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent hidden md:block">
               AI Assistant
             </h2>
           </div>
@@ -333,8 +333,8 @@ export default function ClassicChatUI() {
         )}
 
         {/* Input area */}
-        <div className="p-3 border-t border-white/5 bg-gray-900/30 backdrop-blur-sm flex-shrink-0">
-          <div className="flex items-end gap-2 max-w-4xl mx-auto">
+        <div className="p-2 sm:p-3 border-t border-white/5 bg-gray-900/30 backdrop-blur-sm flex-shrink-0">
+          <div className="flex items-end gap-1.5 sm:gap-2 max-w-4xl mx-auto">
             <textarea
               ref={textareaRef}
               value={inputValue}
@@ -342,19 +342,19 @@ export default function ClassicChatUI() {
               onKeyDown={handleKeyDown}
               placeholder="Type a message..."
               rows={1}
-              className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white/90 placeholder-white/20 resize-none outline-none focus:border-indigo-500/50 transition-colors"
-              style={{ minHeight: '44px', maxHeight: '160px' }}
+              className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 text-sm text-white/90 placeholder-white/20 resize-none outline-none focus:border-indigo-500/50 transition-colors"
+              style={{ minHeight: '40px', maxHeight: '160px' }}
             />
             <MicrophoneButton
               isRecording={voiceInput.status === 'recording'}
               onClick={voiceInput.status === 'recording' ? voiceInput.stop : voiceInput.start}
-              size="md"
+              size={window.innerWidth < 640 ? 'sm' : 'md'}
               disabled={!voiceInput.supported}
             />
             <button
               onClick={handleSend}
               disabled={!inputValue.trim()}
-              className="w-11 h-11 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 flex items-center justify-center text-white disabled:opacity-30 hover:shadow-lg hover:shadow-indigo-500/20 transition-all flex-shrink-0"
+              className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 flex items-center justify-center text-white disabled:opacity-30 hover:shadow-lg hover:shadow-indigo-500/20 transition-all flex-shrink-0"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
@@ -362,7 +362,7 @@ export default function ClassicChatUI() {
             </button>
           </div>
           {voiceInput.status === 'recording' && (
-            <p className="text-xs text-red-400 mt-1 text-center animate-pulse">
+            <p className="text-[10px] sm:text-xs text-red-400 mt-1 text-center animate-pulse">
               🎙️ Listening... speak now
             </p>
           )}

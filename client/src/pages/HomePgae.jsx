@@ -47,7 +47,7 @@ const HomePage = () => {
   return (
     <div className="h-screen flex flex-col bg-[#0a0a0f]">
       {/* Top bar */}
-      <header className="h-12 flex items-center justify-between px-4 border-b border-white/5 bg-gray-950/80 backdrop-blur-xl flex-shrink-0 z-50">
+      <header className="h-14 flex items-center justify-between px-3 sm:px-4 border-b border-white/5 bg-gray-950/80 backdrop-blur-xl flex-shrink-0 z-50">
         <div className="flex items-center gap-3">
           <h1 className="text-sm font-bold gradient-text tracking-tight hidden sm:block">
             NLP AI Assistant
