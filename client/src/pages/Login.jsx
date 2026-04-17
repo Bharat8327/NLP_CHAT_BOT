@@ -37,6 +37,9 @@ const Login = () => {
         sessionStorage.setItem('accessToken', data.accessToken);
       }
 
+      // Store CSRF token for future state-changing requests (DELETE, POST, etc.)
+      useAuthStore.getState().setCsrfToken(data.csrfToken);
+
       // Natively trigger global auth checks and fetch specific cloud chats without a hard reload!
       await checkAuth();
       await useChatStore.getState().fetchCloudChats();

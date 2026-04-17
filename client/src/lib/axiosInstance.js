@@ -22,11 +22,8 @@ const processQueue = (error, token = null) => {
   failedQueue = [];
 };
 
-// Helper to read CSRF token from cookies
-const getCSRFToken = () => {
-  const match = document.cookie.match(new RegExp('(^| )XSRF-TOKEN=([^;]+)'));
-  return match ? match[2] : null;
-};
+// we no longer read CSRF from cookies in cross-origin mode
+
 
 // ── Request Interceptor ─────────────────────────────────
 api.interceptors.request.use((config) => {
@@ -35,10 +32,15 @@ api.interceptors.request.use((config) => {
     config.headers['Authorization'] = `Bearer ${token}`;
   }
   
-  // Natively grab the exact cookie and attach it securely
-  const csrfToken = getCSRFToken();
-  if (csrfToken) {
-    config.headers['X-XSRF-TOKEN'] = csrfToken;
+  // Pull CSRF token from store (needed for cross-origin deployments)
+  try {
+    const { default: useAuthStore } = await import('../store/useAuthStore.js');
+    const csrfToken = useAuthStore.getState().csrfToken;
+    if (csrfToken) {
+      config.headers['X-XSRF-TOKEN'] = csrfToken;
+    }
+  } catch {
+    // Auth store not ready yet
   }
 
   return config;
@@ -67,11 +69,14 @@ api.interceptors.response.use(
         failedQueue.push({ resolve, reject });
       }).then((newToken) => {
         originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
-        // Re-read the fresh CSRF token
-        const csrfToken = getCSRFToken();
-        if (csrfToken) {
-          originalRequest.headers['X-XSRF-TOKEN'] = csrfToken;
-        }
+        // Re-read the fresh CSRF token from store
+        try {
+          const { default: useAuthStore } = await import('../store/useAuthStore.js');
+          const csrfToken = useAuthStore.getState().csrfToken;
+          if (csrfToken) {
+            originalRequest.headers['X-XSRF-TOKEN'] = csrfToken;
+          }
+        } catch {}
         return api(originalRequest);
       }).catch((err) => {
         return Promise.reject(err);
@@ -96,12 +101,11 @@ api.interceptors.response.use(
         localStorage.setItem('accessToken', newToken);
       }
 
-      // Update auth store if available
+      // Update auth store with new user and CSRF token
       try {
         const { default: useAuthStore } = await import('../store/useAuthStore.js');
-        if (data.user) {
-          useAuthStore.getState().setUser(data.user);
-        }
+        if (data.user) useAuthStore.getState().setUser(data.user);
+        if (data.csrfToken) useAuthStore.getState().setCsrfToken(data.csrfToken);
       } catch {
         // Auth store not available — that's OK
       }
@@ -115,13 +119,12 @@ api.interceptors.response.use(
       // Re-inject token and fire original request again
       originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
       
-      // Re-read the fresh CSRF token from the updated cookie
-      const freshCsrf = getCSRFToken();
-      if (freshCsrf) {
-        originalRequest.headers['X-XSRF-TOKEN'] = freshCsrf;
-      }
-      // Also clear old CSRF headers that might conflict
+      // Clear old CSRF headers that might conflict and use fresh one from data
+      delete originalRequest.headers['X-XSRF-TOKEN'];
       delete originalRequest.headers['x-xsrf-token'];
+      if (data.csrfToken) {
+        originalRequest.headers['X-XSRF-TOKEN'] = data.csrfToken;
+      }
 
       return api(originalRequest);
     } catch (refreshErr) {

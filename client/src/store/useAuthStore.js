@@ -4,10 +4,12 @@ import toast from 'react-hot-toast';
 
 const useAuthStore = create((set) => ({
   user: null,
+  csrfToken: null,
   isAuthenticated: false,
   isLoading: true,
 
   // Direct setters — used by axios interceptor after token refresh
+  setCsrfToken: (csrfToken) => set({ csrfToken }),
   setUser: (user) => set({ user, isAuthenticated: !!user }),
   setAuthenticated: (isAuthenticated) => set({ isAuthenticated }),
 
