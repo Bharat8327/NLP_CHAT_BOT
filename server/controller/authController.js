@@ -169,7 +169,7 @@ export const login = async (req, res) => {
 
     setSecureCookies(res, refreshToken, csrfToken, refreshTokenId, rememberMe);
 
-    res.json({ accessToken, user: sanitizeUser(user) });
+    res.json({ accessToken, csrfToken, user: sanitizeUser(user) });
   } catch (err) {
     logger.error('Login error', { err: err.message });
     res.status(500).json({ error: 'Server error' });
@@ -218,7 +218,7 @@ export const refresh = async (req, res) => {
     setSecureCookies(res, newRefreshToken, newCsrf, newRefreshTokenId);
 
     // Strip sensitive data before sending user back
-    res.json({ accessToken: newAccessToken, user: sanitizeUser(user) });
+    res.json({ accessToken: newAccessToken, csrfToken: newCsrf, user: sanitizeUser(user) });
   } catch (err) {
     logger.error('Refresh token error', { err: err.message });
     res.status(500).json({ error: 'Server error' });
