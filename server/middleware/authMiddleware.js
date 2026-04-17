@@ -15,15 +15,7 @@ const authMW = (req, res, next) => {
   try {
     const decoded = jwt.verify(token, secret);
     
-    // 1. Device Footprint Validation (Prevent Stolen Token usage)
-    const currentAgent = req.headers['user-agent'] || 'unknown';
-    const currentFp = crypto.createHash('sha256').update(currentAgent).digest('hex');
-    
-    if (decoded.fp !== currentFp) {
-      return res.status(401).json({ error: 'Token theft detected / Session Invalidated' });
-    }
-
-    // 2. CSRF Native Double-Submit Validation
+    // 1. CSRF Native Double-Submit Validation
     // Avoid CSRF check on pristine GET requests
     if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method)) {
       const headerCsrf = req.headers['x-xsrf-token'];

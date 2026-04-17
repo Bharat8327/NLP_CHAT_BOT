@@ -7,6 +7,11 @@ import morgan from 'morgan';
 import compression from 'compression';
 import helmet from 'helmet';
 import { Server } from 'socket.io';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Config
 import dbConnect from './config/dbConnect.js';
@@ -86,7 +91,7 @@ app.use(
     origin: CLIENT_URL,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-XSRF-TOKEN', 'x-xsrf-token'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-XSRF-TOKEN', 'x-xsrf-token', 'X-Background-Sync', 'x-background-sync'],
   })
 );
 
@@ -161,9 +166,16 @@ if (process.env.LIVEKIT_API_KEY && process.env.LIVEKIT_API_SECRET) {
   logger.info('LiveKit credentials not found — token endpoint disabled');
 }
 
-// 404 handler
-app.use((_req, res) => {
-  res.status(404).json({ error: 'Route not found' });
+// Serve static files from the client dist folder
+app.use(express.static(path.join(__dirname, '../client/dist')));
+
+// SPA Catch-all: Send index.html for any request that doesn't match an API route
+app.get('/*splat', (req, res) => {
+  // If request contains /api, it shouldn't have fallen through to here as a GET, but handle it anyway
+  if (req.originalUrl.startsWith('/api')) {
+    return res.status(404).json({ error: 'API route not found' });
+  }
+  res.sendFile(path.join(__dirname, '../client/dist/index.html'));
 });
 
 // Global error handler

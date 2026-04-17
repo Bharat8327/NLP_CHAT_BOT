@@ -17,11 +17,14 @@ export const sendEmail = async ({ to, subject, html }) => {
     return { success: true, mocked: true };
   }
 
+  const smtpPort = parseInt(process.env.SMTP_PORT, 10) || 587;
+  const isSecure = smtpPort === 465;
+
   const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST || 'smtp.gmail.com',
-    port: parseInt(process.env.SMTP_PORT, 10) || 587,
-    secure: false, // STARTTLS on port 587
-    requireTLS: true,
+    port: smtpPort,
+    secure: isSecure, // true for 465, false for other ports
+    requireTLS: !isSecure,
     family: 4, // Force IPv4 to bypass Render's broken IPv6 Dual-Stack (ENETUNREACH 2404)
     auth: {
       user: smtpUser,

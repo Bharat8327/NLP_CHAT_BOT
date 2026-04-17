@@ -30,17 +30,17 @@ const setSecureCookies = (res, refreshToken, csrfToken, refreshTokenId, remember
     secure: true,  // Needed for sameSite: 'none'
     sameSite: 'none', // Allows cross-port transmission on localhost
   };
-  
+
   // If Remember Me is true, persist for 1 year. If false, it acts as a Session Cookie (deleted on browser close)
   if (rememberMe) {
     cookieOptions.maxAge = 365 * 24 * 60 * 60 * 1000;
   }
 
   res.cookie('refreshToken', refreshToken, cookieOptions);
-  
+
   // Store the refreshTokenId in httpOnly cookie for O(1) lookup during refresh
   res.cookie('refreshTokenId', refreshTokenId, cookieOptions);
-  
+
   // Axios will automatically read this and attach it as X-XSRF-TOKEN header!
   const csrfOptions = { ...cookieOptions, httpOnly: false };
   res.cookie('XSRF-TOKEN', csrfToken, csrfOptions);
@@ -79,13 +79,13 @@ export const register = async (req, res) => {
 
     // Try sending email FIRST before creating/updating the user
     const html = `<h2>Welcome to Antigravity NLP!</h2><p>Your verification code is: <strong>${otp}</strong></p><p>It expires in 10 minutes.</p>`;
-    
+
     try {
       await sendEmail({ to: cleanEmail, subject: 'Verify Your Account', html });
     } catch (emailError) {
-      logger.error('Registration email failed.', { 
-        email: cleanEmail, 
-        error: emailError.message 
+      logger.error('Registration email failed.', {
+        email: cleanEmail,
+        error: emailError.message
       });
       // Fallback: If email fails (e.g. invalid SMTP pass), print OTP in the console so testing can continue
       logger.warn(`=============================================================`);
@@ -180,14 +180,14 @@ export const refresh = async (req, res) => {
   try {
     const rfToken = req.cookies.refreshToken;
     const rfTokenId = req.cookies.refreshTokenId;
-    
+
     if (!rfToken || !rfTokenId) {
       return res.status(401).json({ error: 'Not authenticated' });
     }
 
     // O(1) indexed lookup by refreshTokenId instead of iterating ALL users
     const user = await User.findOne({ refreshTokenId: rfTokenId });
-    
+
     if (!user || !user.refreshToken) {
       res.clearCookie('refreshToken', { secure: true, sameSite: 'none' });
       res.clearCookie('refreshTokenId', { secure: true, sameSite: 'none' });
@@ -216,7 +216,7 @@ export const refresh = async (req, res) => {
     await user.save();
 
     setSecureCookies(res, newRefreshToken, newCsrf, newRefreshTokenId);
-    
+
     // Strip sensitive data before sending user back
     res.json({ accessToken: newAccessToken, user: sanitizeUser(user) });
   } catch (err) {
@@ -229,8 +229,8 @@ export const logout = async (req, res) => {
   try {
     // Try to revoke via auth (if token is still valid)
     if (req.user?.id) {
-      await User.findByIdAndUpdate(req.user.id, { 
-        $unset: { refreshToken: 1, refreshTokenId: 1 } 
+      await User.findByIdAndUpdate(req.user.id, {
+        $unset: { refreshToken: 1, refreshTokenId: 1 }
       });
     } else {
       // Fallback: revoke by refreshTokenId cookie if JWT expired
@@ -257,7 +257,7 @@ export const forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
     if (!email) return res.status(400).json({ error: 'Email is required' });
-    
+
     const cleanEmail = validator.normalizeEmail(email.trim());
     const user = await User.findOne({ email: cleanEmail });
     if (!user) return res.status(404).json({ error: 'User not found' });
@@ -285,10 +285,10 @@ export const forgotPassword = async (req, res) => {
       logger.warn(`EMAIL BYPASS: Since email failed, use this Reset Link!`);
       logger.warn(`RESET URL: ${resetUrl}`);
       logger.warn(`=============================================================`);
-      
+
       // We still return success to the client so they know it "went through" and can use the link from console
-      return res.json({ 
-        message: 'Email sending failed, but Reset URL has been printed to the server console for testing.' 
+      return res.json({
+        message: 'Email sending failed, but Reset URL has been printed to the server console for testing.'
       });
     }
   } catch (err) {
